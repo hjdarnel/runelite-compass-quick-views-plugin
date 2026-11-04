@@ -1,48 +1,97 @@
 package hjdarnel.compassquickviews;
 
 import com.google.inject.Provides;
+import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import javax.inject.Inject;
-import lombok.extern.slf4j.Slf4j;
-import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
-import net.runelite.api.GameState;
-import net.runelite.api.events.GameStateChanged;
+import net.runelite.api.Menu;
+import net.runelite.api.MenuEntry;
+import net.runelite.api.events.MenuOptionClicked;
+import net.runelite.api.events.PostMenuSort;
+import net.runelite.api.gameval.InterfaceID;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
+import net.runelite.client.util.Text;
 
-@Slf4j
 @PluginDescriptor(
-	name = "Example"
+	name = "Compass Quick Views",
+	description = "Quickly click on the compass to rotate through North/South/East/West views, or other configured order",
+	tags = {"compass", "camera"}
 )
 public class CompassQuickViewsPlugin extends Plugin
 {
+	// The compass is a different component in each interface layout
+	private static final Set<Integer> COMPASS_COMPONENTS = Set.of(
+		InterfaceID.Toplevel.COMPASSCLICK,
+		InterfaceID.ToplevelOsrsStretch.COMPASSCLICK,
+		InterfaceID.ToplevelPreEoc.COMPASSCLICK,
+		InterfaceID.ToplevelOsm.COMPASSCLICK,
+		InterfaceID.OrbsOsmNomap.COMPASSCLICK
+	);
+
 	@Inject
 	private Client client;
 
 	@Inject
 	private CompassQuickViewsConfig config;
 
-	@Override
-	protected void startUp() throws Exception
-	{
-		log.debug("Example started!");
-	}
+	private CameraDirection lastDirection;
+	private long lastClickNanos;
 
-	@Override
-	protected void shutDown() throws Exception
+	// Runs after other menu swappers, such as More Menu Entry Swaps at priority -1, so they can't undo this swap
+	@Subscribe(priority = -2)
+	public void onPostMenuSort(PostMenuSort event)
 	{
-		log.debug("Example stopped!");
+		Menu menu = client.getMenu();
+		MenuEntry[] entries = menu.getMenuEntries();
+		if (entries.length == 0 || !isCompass(entries[entries.length - 1].getParam1()))
+		{
+			return;
+		}
+
+		String option = nextDirection().getOption();
+		for (int i = entries.length - 1; i >= 0; --i)
+		{
+			MenuEntry entry = entries[i];
+			if (isCompass(entry.getParam1()) && option.equals(Text.removeTags(entry.getOption())))
+			{
+				entries[i] = entries[entries.length - 1];
+				entries[entries.length - 1] = entry;
+				menu.setMenuEntries(entries);
+				return;
+			}
+		}
 	}
 
 	@Subscribe
-	public void onGameStateChanged(GameStateChanged gameStateChanged)
+	public void onMenuOptionClicked(MenuOptionClicked event)
 	{
-		if (gameStateChanged.getGameState() == GameState.LOGGED_IN)
+		// Picking an option from the right-click menu doesn't continue the run of clicks
+		if (client.isMenuOpen() || !isCompass(event.getParam1()))
 		{
-			client.addChatMessage(ChatMessageType.GAMEMESSAGE, "", "Example says " + config.greeting(), null);
+			return;
 		}
+
+		CameraDirection direction = CameraDirection.fromOption(Text.removeTags(event.getMenuOption()));
+		if (direction != null)
+		{
+			lastDirection = direction;
+			lastClickNanos = System.nanoTime();
+		}
+	}
+
+	private CameraDirection nextDirection()
+	{
+		boolean inWindow = System.nanoTime() - lastClickNanos <= TimeUnit.MILLISECONDS.toNanos(config.clickWindow());
+		return config.rotationOrder().next(inWindow ? lastDirection : null);
+	}
+
+	private static boolean isCompass(int param1)
+	{
+		return COMPASS_COMPONENTS.contains(param1);
 	}
 
 	@Provides
