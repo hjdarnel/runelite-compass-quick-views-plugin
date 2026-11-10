@@ -5,6 +5,7 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import javax.inject.Inject;
 import net.runelite.api.Client;
+import net.runelite.api.KeyCode;
 import net.runelite.api.Menu;
 import net.runelite.api.MenuEntry;
 import net.runelite.api.events.MenuOptionClicked;
@@ -41,10 +42,16 @@ public class CompassQuickViewsPlugin extends Plugin
 	private CameraDirection lastDirection;
 	private long lastClickNanos;
 
-	// Runs after other menu swappers, such as More Menu Entry Swaps at priority -1, so they can't undo this swap
-	@Subscribe(priority = -2)
+	// Intentionally run before other menu swappers, so their custom swaps on the compass take precedence over this one
+	@Subscribe
 	public void onPostMenuSort(PostMenuSort event)
 	{
+		// Shift-clicks aren't part of the run of clicks, so they keep the compass's normal left-click
+		if (isShiftHeld())
+		{
+			return;
+		}
+
 		Menu menu = client.getMenu();
 		MenuEntry[] entries = menu.getMenuEntries();
 		if (entries.length == 0 || !isCompass(entries[entries.length - 1].getParam1()))
@@ -69,8 +76,8 @@ public class CompassQuickViewsPlugin extends Plugin
 	@Subscribe
 	public void onMenuOptionClicked(MenuOptionClicked event)
 	{
-		// Picking an option from the right-click menu doesn't continue the run of clicks
-		if (client.isMenuOpen() || !isCompass(event.getParam1()))
+		// Picking an option from the right-click menu or shift-clicking doesn't continue the run of clicks
+		if (client.isMenuOpen() || isShiftHeld() || !isCompass(event.getParam1()))
 		{
 			return;
 		}
@@ -87,6 +94,11 @@ public class CompassQuickViewsPlugin extends Plugin
 	{
 		boolean inWindow = System.nanoTime() - lastClickNanos <= TimeUnit.MILLISECONDS.toNanos(config.clickWindow());
 		return config.rotationOrder().next(inWindow ? lastDirection : null);
+	}
+
+	private boolean isShiftHeld()
+	{
+		return client.isKeyPressed(KeyCode.KC_SHIFT);
 	}
 
 	private static boolean isCompass(int param1)

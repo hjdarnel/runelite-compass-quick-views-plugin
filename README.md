@@ -26,4 +26,4 @@ The left-click option on the compass always shows where the next click will go, 
 
 ## Menu swappers
 
-This plugin controls the compass's left-click option while it's enabled, so it can override other swaps plugins.
+Custom swaps on the compass from other plugins, such as [More Menu Entry Swaps](https://github.com/geheur/More-menu-entry-swaps/), take precedence over this plugin. If you've swapped the compass's left-click to a direction, clicking goes to that direction rather than stepping through the rotation order.
