@@ -9,22 +9,55 @@ import net.runelite.client.config.Units;
 public interface CompassQuickViewsConfig extends Config
 {
 	@ConfigItem(
-		keyName = "rotationOrder",
-		name = "Rotation order",
-		description = "The order of the directions the camera rotates through when the compass is clicked repeatedly",
+		keyName = "firstDirection",
+		name = "First click",
+		description = "The direction a single click on the compass goes to",
 		position = 0
 	)
-	default RotationOrder rotationOrder()
+	default CameraDirection firstDirection()
 	{
-		return RotationOrder.NORTH_SOUTH_EAST_WEST;
+		return CameraDirection.NORTH;
+	}
+
+	@ConfigItem(
+		keyName = "secondDirection",
+		name = "Second click",
+		description = "The direction a second quick click goes to",
+		position = 1
+	)
+	default CameraDirection secondDirection()
+	{
+		return CameraDirection.SOUTH;
+	}
+
+	@ConfigItem(
+		keyName = "thirdDirection",
+		name = "Third click",
+		description = "The direction a third quick click goes to",
+		position = 2
+	)
+	default CameraDirection thirdDirection()
+	{
+		return CameraDirection.EAST;
+	}
+
+	@ConfigItem(
+		keyName = "fourthDirection",
+		name = "Fourth click",
+		description = "The direction a fourth quick click goes to. A fifth quick click goes back to the first click direction",
+		position = 3
+	)
+	default CameraDirection fourthDirection()
+	{
+		return CameraDirection.WEST;
 	}
 
 	@Units(Units.MILLISECONDS)
 	@ConfigItem(
 		keyName = "clickWindow",
 		name = "Click window",
-		description = "The maximum time between clicks for a click to move to the next direction. A slower click goes back to the first direction",
-		position = 1
+		description = "The maximum time between clicks for a click to move to the next direction. A slower click goes back to the first click direction",
+		position = 4
 	)
 	default int clickWindow()
 	{

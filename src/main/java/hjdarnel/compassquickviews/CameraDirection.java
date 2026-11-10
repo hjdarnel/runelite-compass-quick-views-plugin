@@ -13,19 +13,4 @@ public enum CameraDirection
 	WEST("Look West");
 
 	private final String option;
-
-	/**
-	 * Gets the direction for a compass menu option, or null if it isn't one.
-	 */
-	public static CameraDirection fromOption(String option)
-	{
-		for (CameraDirection direction : values())
-		{
-			if (direction.option.equals(option))
-			{
-				return direction;
-			}
-		}
-		return null;
-	}
 }

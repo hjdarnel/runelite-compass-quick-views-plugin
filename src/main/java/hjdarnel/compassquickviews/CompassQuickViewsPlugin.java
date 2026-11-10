@@ -39,7 +39,11 @@ public class CompassQuickViewsPlugin extends Plugin
 	@Inject
 	private CompassQuickViewsConfig config;
 
-	private CameraDirection lastDirection;
+	private static final int CLICKS_PER_RUN = 4;
+
+	// Positions in the run of clicks, from 0 for a single click to 3 for a fourth click
+	private int offeredClick;
+	private int lastClick = -1;
 	private long lastClickNanos;
 
 	// Intentionally run before other menu swappers, so their custom swaps on the compass take precedence over this one
@@ -59,7 +63,8 @@ public class CompassQuickViewsPlugin extends Plugin
 			return;
 		}
 
-		String option = nextDirection().getOption();
+		offeredClick = nextClick();
+		String option = directionForClick(offeredClick).getOption();
 		for (int i = entries.length - 1; i >= 0; --i)
 		{
 			MenuEntry entry = entries[i];
@@ -82,18 +87,33 @@ public class CompassQuickViewsPlugin extends Plugin
 			return;
 		}
 
-		CameraDirection direction = CameraDirection.fromOption(Text.removeTags(event.getMenuOption()));
-		if (direction != null)
+		// Only count the option this plugin offered, not one another plugin swapped in
+		if (directionForClick(offeredClick).getOption().equals(Text.removeTags(event.getMenuOption())))
 		{
-			lastDirection = direction;
+			lastClick = offeredClick;
 			lastClickNanos = System.nanoTime();
 		}
 	}
 
-	private CameraDirection nextDirection()
+	private int nextClick()
 	{
 		boolean inWindow = System.nanoTime() - lastClickNanos <= TimeUnit.MILLISECONDS.toNanos(config.clickWindow());
-		return config.rotationOrder().next(inWindow ? lastDirection : null);
+		return inWindow && lastClick >= 0 ? (lastClick + 1) % CLICKS_PER_RUN : 0;
+	}
+
+	private CameraDirection directionForClick(int click)
+	{
+		switch (click)
+		{
+			case 1:
+				return config.secondDirection();
+			case 2:
+				return config.thirdDirection();
+			case 3:
+				return config.fourthDirection();
+			default:
+				return config.firstDirection();
+		}
 	}
 
 	private boolean isShiftHeld()
